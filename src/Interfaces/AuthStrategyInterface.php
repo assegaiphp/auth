@@ -1,7 +1,12 @@
 <?php
 
-namespace Assegaiphp\Auth\Interfaces;
+namespace Assegai\Auth\Interfaces;
 
+/**
+ * Interface for authentication strategies.
+ *
+ * @package Assegaiphp\Auth\Interfaces
+ */
 interface AuthStrategyInterface
 {
   /**
@@ -22,9 +27,9 @@ interface AuthStrategyInterface
   /**
    * Get the authenticated user's data.
    *
-   * @return array|null The authenticated user's data, or null if not authenticated.
+   * @return object|null The authenticated user's data, or null if not authenticated.
    */
-  public function getUser(): ?array;
+  public function getUser(): ?object;
 
   /**
    * Log out the user.
