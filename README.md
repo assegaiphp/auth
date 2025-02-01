@@ -70,7 +70,7 @@ $issuer = 'your-issuer';
 $authStrategy = new SessionAuthStrategy($user);
 
 // Or use JWT-based authentication
-$authStrategy = new JwtAuthStrategy($user, $secretKey, $audience, $issuer);
+$authStrategy = new JwtAuthStrategy($user, ['secret_key' => $secretKey, 'audience' => $audience, 'issuer' => $issuer]);
 ```
 
 ---
