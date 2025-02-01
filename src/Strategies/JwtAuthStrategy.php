@@ -23,28 +23,54 @@ class JwtAuthStrategy implements AuthStrategyInterface
    * @var string The JWT token.
    */
   protected string $token = '';
+  /**
+   * @var string The secret key.
+   */
+  protected string $secretKey;
+  /**
+   * @var string The audience.
+   */
+  protected string $audience;
+  /**
+   * @var string The issuer.
+   */
+  protected string $issuer;
+  /**
+   * @var string The authentication username field.
+   */
+  protected string $authUsernameField = 'email';
+  /**
+   * @var string The authentication password field.
+   */
+  protected string $authPasswordField = 'password';
+  /**
+   * @var string|int|null The token lifetime.
+   */
+  protected string|int|null $tokenLifetime = '1 hour';
+  /**
+   * @var string The algorithm.
+   */
+  protected string $algorithm = 'HS256';
 
   /**
    * Constructs a JwtAuthStrategy.
    *
    * @param object $userData The user data.
-   * @param string $secretKey The secret key.
-   * @param string $audience The audience.
-   * @param string $issuer The issuer.
-   * @param string $authUsernameField The username field.
-   * @param string $authPasswordField The password field.
-   * @param string $lifetime The token lifetime.
+   * @param array $config
+   * @throws AuthException
    */
   public function __construct(
     protected object $userData,
-    protected string $secretKey,
-    protected string $audience,
-    protected string $issuer,
-    protected string $authUsernameField = 'email',
-    protected string $authPasswordField = 'password',
-    protected string $lifetime = '1 hour',
+    array $config = []
   )
   {
+    $this->secretKey = $config['secret_key'] ?? throw new AuthException('Invalid secret key.');
+    $this->algorithm = $config['algorithm'] ?? 'HS256';
+    $this->audience = $config['audience'] ?? '';
+    $this->issuer = $config['issuer'] ?? 'assegaiphp';
+    $this->authUsernameField = $config['authUsernameField'] ?? 'email';
+    $this->authPasswordField = $config['authPasswordField'] ?? 'password';
+    $this->tokenLifetime = $config['token_lifetime'] ?? '1 hour';
   }
 
   /**
@@ -78,11 +104,21 @@ class JwtAuthStrategy implements AuthStrategyInterface
     }
 
     // Generate JWT token.
+    $lifetime = $this->tokenLifetime;
+
+    if (!$lifetime) {
+      $lifetime = '1 hour';
+    }
+
+    if (is_string($lifetime)) {
+      $lifetime = strtotime($lifetime);
+    }
+
     $payload = [
       'sub' => $this->userData->id ?? $this->userData->$usernameField,
       $usernameField => $this->userData->$usernameField,
       'iat' => time(),
-      'exp' => strtotime($this->lifetime ?? '1 hour'),
+      'exp' => $lifetime,
     ];
 
     if (isset($this->userData->roles)) {
@@ -97,7 +133,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
       $payload['name'] = "{$this->userData->firstName} {$this->userData->lastName}";
     }
 
-    $this->token = JWT::encode($payload, $this->secretKey, 'HS256');
+    $this->token = JWT::encode($payload, $this->secretKey, $this->algorithm);
     $this->user = (object)$payload;
 
     return true;
