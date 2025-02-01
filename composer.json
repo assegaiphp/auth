@@ -1,0 +1,29 @@
+{
+    "name": "assegaiphp/auth",
+    "description": "A progressive PHP framework for building efficient and scalable server-side applications.",
+    "type": "library",
+    "require-dev": {
+        "pestphp/pest": "^3.7",
+        "phpstan/phpstan": "^2.1"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Assegaiphp\\Auth\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Andrew Masiye",
+            "email": "amasiye313@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.3"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
