@@ -41,7 +41,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
    * Constructs a SessionAuthStrategy.
    *
    * @param object $user
-   * @param array<string, mixed> $config
+   * @param array{session_name: ?string, session_lifetime: ?string, username_field: ?string, password_field: ?string} $config
    */
   public function __construct(
     protected object $user,
