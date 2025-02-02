@@ -60,7 +60,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
    * Constructs a JwtAuthStrategy.
    *
    * @param object $userData The user data.
-   * @param array $config
+   * @param array{secret_key: ?string, algorithm: ?string, audience: ?string, issuer: ?string, username_field: ?string, password_field: ?string, token_lifetime: ?string, token: ?string} $config
    * @throws AuthException
    */
   public function __construct(
@@ -72,8 +72,8 @@ class JwtAuthStrategy implements AuthStrategyInterface
     $this->algorithm = $config['algorithm'] ?? 'HS256';
     $this->audience = $config['audience'] ?? '';
     $this->issuer = $config['issuer'] ?? 'assegaiphp';
-    $this->authUsernameField = $config['authUsernameField'] ?? 'email';
-    $this->authPasswordField = $config['authPasswordField'] ?? 'password';
+    $this->authUsernameField = $config['username_field'] ?? 'email';
+    $this->authPasswordField = $config['password_field'] ?? 'password';
     $this->tokenLifetime = $config['token_lifetime'] ?? '1 hour';
     $this->token = $config['token'] ?? '';
   }
