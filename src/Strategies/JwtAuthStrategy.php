@@ -2,18 +2,21 @@
 
 namespace Assegai\Auth\Strategies;
 
+use Assegai\Attributes\Injectable;
 use Assegai\Auth\Exceptions\AuthException;
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use stdClass;
 
 /**
  * A JWT authentication strategy.
  *
  * @package Assegai\Auth\Strategies
  */
+#[Injectable]
 class JwtAuthStrategy implements AuthStrategyInterface
 {
   /**
@@ -155,7 +158,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
       $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION']);
     }
     try {
-      $decoded = JWT::decode($token, new Key($this->secretKey, 'HS256'));
+      $decoded = JWT::decode($token, new Key($this->secretKey, $this->algorithm));
       $this->user = $decoded;
     } catch (Exception) {
       return false;
@@ -188,5 +191,15 @@ class JwtAuthStrategy implements AuthStrategyInterface
   public function getToken(): string
   {
     return $this->token;
+  }
+
+  /**
+   * Get the decoded JWT token.
+   *
+   * @return stdClass The decoded JWT token.
+   */
+  public function getDecoded(): stdClass
+  {
+    return JWT::decode($this->token, new Key($this->secretKey, $this->algorithm));
   }
 }
