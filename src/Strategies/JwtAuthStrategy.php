@@ -126,6 +126,14 @@ class JwtAuthStrategy implements AuthStrategyInterface
       'exp' => $lifetime,
     ];
 
+    if ($this->issuer) {
+      $payload['iss'] = $this->issuer;
+    }
+
+    if ($this->audience) {
+      $payload['aud'] = $this->audience;
+    }
+
     if (isset($this->userData->roles)) {
       $payload['roles'] = $this->userData->roles;
     }
