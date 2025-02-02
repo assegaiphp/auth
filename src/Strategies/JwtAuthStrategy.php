@@ -2,6 +2,7 @@
 
 namespace Assegai\Auth\Strategies;
 
+use Assegai\Attributes\Injectable;
 use Assegai\Auth\Exceptions\AuthException;
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
@@ -14,6 +15,7 @@ use Firebase\JWT\Key;
  *
  * @package Assegai\Auth\Strategies
  */
+#[Injectable]
 class JwtAuthStrategy implements AuthStrategyInterface
 {
   /**

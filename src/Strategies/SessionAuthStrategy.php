@@ -2,6 +2,7 @@
 
 namespace Assegai\Auth\Strategies;
 
+use Assegai\Attributes\Injectable;
 use Assegai\Auth\Exceptions\AuthException;
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
@@ -11,6 +12,7 @@ use Assegai\Auth\Interfaces\AuthStrategyInterface;
  *
  * @package Assegaiphp\Auth\Strategies
  */
+#[Injectable]
 class SessionAuthStrategy implements AuthStrategyInterface
 {
   /**
