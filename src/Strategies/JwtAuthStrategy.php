@@ -3,6 +3,7 @@
 namespace Assegai\Auth\Strategies;
 
 use Assegai\Auth\Exceptions\AuthException;
+use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
 use Exception;
 use Firebase\JWT\JWT;
@@ -71,6 +72,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
     $this->authUsernameField = $config['authUsernameField'] ?? 'email';
     $this->authPasswordField = $config['authPasswordField'] ?? 'password';
     $this->tokenLifetime = $config['token_lifetime'] ?? '1 hour';
+    $this->token = $config['token'] ?? '';
   }
 
   /**
@@ -92,7 +94,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
       !key_exists($usernameField, $credentials) ||
       !key_exists($passwordField, $credentials)
     ) {
-      throw new AuthException('Invalid credentials.');
+      throw new MalformedCredentialsException();
     }
 
     if ($credentials[$usernameField] !== $this->userData->$usernameField) {
@@ -144,11 +146,14 @@ class JwtAuthStrategy implements AuthStrategyInterface
    */
   public function isAuthenticated(): bool
   {
-    if (!isset($_SERVER['HTTP_AUTHORIZATION'])) {
+    if (!isset($_SERVER['HTTP_AUTHORIZATION']) && !$this->token) {
       return false;
     }
 
-    $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION']);
+    $token = $this->token;
+    if (!$token) {
+      $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION']);
+    }
     try {
       $decoded = JWT::decode($token, new Key($this->secretKey, 'HS256'));
       $this->user = $decoded;

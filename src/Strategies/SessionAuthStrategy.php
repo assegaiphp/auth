@@ -3,6 +3,7 @@
 namespace Assegai\Auth\Strategies;
 
 use Assegai\Auth\Exceptions\AuthException;
+use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
 
 /**
@@ -70,7 +71,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
       !key_exists($usernameField, $credentials) ||
       !key_exists($passwordField, $credentials)
     ) {
-      throw new AuthException('Invalid credentials.');
+      throw new MalformedCredentialsException();
     }
 
     if ($credentials[$usernameField] !== $this->user->$usernameField) {
@@ -82,7 +83,9 @@ class SessionAuthStrategy implements AuthStrategyInterface
     }
 
     session_start();
-    $_SESSION[self::SESSION_USER_FIELD] = $this->user;
+    $user = clone $this->user;
+    unset($user->$passwordField);
+    $_SESSION[self::SESSION_USER_FIELD] = $user;
     if ($this->sessionName) {
       if ( false === session_name($this->sessionName) ) {
         throw new AuthException('Failed to set session name.');
