@@ -63,14 +63,14 @@ class JwtAuthStrategy implements AuthStrategyInterface
   /**
    * Constructs a JwtAuthStrategy.
    *
-   * @param array{user_data: ?object, secret_key: ?string, algorithm: ?string, audience: ?string, issuer: ?string, username_field: ?string, password_field: ?string, token_lifetime: ?string, token: ?string} $config
+   * @param array{user: ?object, secret_key: ?string, algorithm: ?string, audience: ?string, issuer: ?string, username_field: ?string, password_field: ?string, token_lifetime: ?string, token: ?string} $config
    * @throws AuthException
    */
   public function __construct(
     array $config = []
   )
   {
-    $this->userData = $config['user_data'] ?? new stdClass();
+    $this->userData = $config['user'] ?? new stdClass();
     $this->secretKey = $config['secret_key'] ?? throw new AuthException('Invalid secret key.');
     $this->algorithm = $config['algorithm'] ?? 'HS256';
     $this->audience = $config['audience'] ?? '';
