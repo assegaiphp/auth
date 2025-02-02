@@ -6,6 +6,7 @@ use Assegai\Attributes\Injectable;
 use Assegai\Auth\Exceptions\AuthException;
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Interfaces\AuthStrategyInterface;
+use stdClass;
 
 /**
  * A session-based authentication strategy.
@@ -15,6 +16,10 @@ use Assegai\Auth\Interfaces\AuthStrategyInterface;
 #[Injectable]
 class SessionAuthStrategy implements AuthStrategyInterface
 {
+  /**
+   * @var object The user data.
+   */
+  protected object $user;
   /**
    * The session user field.
    */
@@ -40,14 +45,13 @@ class SessionAuthStrategy implements AuthStrategyInterface
   /**
    * Constructs a SessionAuthStrategy.
    *
-   * @param object $user
-   * @param array{session_name: ?string, session_lifetime: ?string, username_field: ?string, password_field: ?string} $config
+   * @param array{user: ?object, session_name: ?string, session_lifetime: ?string, username_field: ?string, password_field: ?string} $config
    */
   public function __construct(
-    protected object $user,
     array $config = []
   )
   {
+    $this->user = $config['user'] ?? new stdClass();
     $this->sessionName = $config['session_name'] ?? null;
     $this->sessionLifetime = $config['session_lifetime'] ?? null;
     $this->usernameField = $config['username_field'] ?? $this->usernameField;
@@ -56,6 +60,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
 
   /**
    * @inheritDoc
+   * @throws AuthException
    */
   public function authenticate(array $credentials): bool
   {
@@ -63,6 +68,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
     $passwordField = $this->passwordField;
 
     if (
+      !is_object($this->user) ||
       !property_exists($this->user, $this->usernameField) ||
       !property_exists($this->user, $this->passwordField)
     ) {

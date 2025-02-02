@@ -20,6 +20,10 @@ use stdClass;
 class JwtAuthStrategy implements AuthStrategyInterface
 {
   /**
+   * @var object The user data.
+   */
+  protected object $userData;
+  /**
    * @var object|null The authenticated user.
    */
   protected ?object $user = null;
@@ -59,15 +63,14 @@ class JwtAuthStrategy implements AuthStrategyInterface
   /**
    * Constructs a JwtAuthStrategy.
    *
-   * @param object $userData The user data.
-   * @param array{secret_key: ?string, algorithm: ?string, audience: ?string, issuer: ?string, username_field: ?string, password_field: ?string, token_lifetime: ?string, token: ?string} $config
+   * @param array{user_data: ?object, secret_key: ?string, algorithm: ?string, audience: ?string, issuer: ?string, username_field: ?string, password_field: ?string, token_lifetime: ?string, token: ?string} $config
    * @throws AuthException
    */
   public function __construct(
-    protected object $userData,
     array $config = []
   )
   {
+    $this->userData = $config['user_data'] ?? new stdClass();
     $this->secretKey = $config['secret_key'] ?? throw new AuthException('Invalid secret key.');
     $this->algorithm = $config['algorithm'] ?? 'HS256';
     $this->audience = $config['audience'] ?? '';
@@ -87,6 +90,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
     $passwordField = $this->authPasswordField;
 
     if (
+      !is_object($this->user) ||
       !property_exists($this->userData, $usernameField) ||
       !property_exists($this->userData, $passwordField)
     ) {
