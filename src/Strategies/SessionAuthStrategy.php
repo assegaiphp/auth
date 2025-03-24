@@ -90,7 +90,9 @@ class SessionAuthStrategy implements AuthStrategyInterface
       return false;
     }
 
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+    }
     $user = clone $this->user;
     unset($user->$passwordField);
     $_SESSION[self::SESSION_USER_FIELD] = $user;
@@ -115,7 +117,9 @@ class SessionAuthStrategy implements AuthStrategyInterface
    */
   public function isAuthenticated(): bool
   {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+    }
     return isset($_SESSION[self::SESSION_USER_FIELD]);
   }
 
@@ -124,7 +128,9 @@ class SessionAuthStrategy implements AuthStrategyInterface
    */
   public function getUser(): ?object
   {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+    }
     return $_SESSION[self::SESSION_USER_FIELD] ?? null;
   }
 
@@ -133,7 +139,9 @@ class SessionAuthStrategy implements AuthStrategyInterface
    */
   public function logout(): void
   {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+    }
     session_destroy();
   }
 }

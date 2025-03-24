@@ -15,7 +15,7 @@ beforeEach(function() {
 
 it('can be instantiated', function() {
   try {
-    expect(new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]))
+    expect(new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]))
       ->toBeInstanceOf(JwtAuthStrategy::class);
   } catch (Exception $exception) {
     $this->fail($exception->getMessage());
@@ -24,7 +24,7 @@ it('can be instantiated', function() {
 
 it('can authenticate a user', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]))
       ->toBeTrue();
   } catch (Exception $exception) {
@@ -34,7 +34,7 @@ it('can authenticate a user', function() {
 
 it('can generate a token', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
       $this->fail('Failed to authenticate user');
     }
@@ -50,7 +50,7 @@ it('can generate a token', function() {
 
 it('can validate a token', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
       $this->fail('Failed to authenticate user');
     }
@@ -63,7 +63,7 @@ it('can validate a token', function() {
 
 it('can fail to authenticate a user with missing email', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     expect($strategy->authenticate(['password' => TEST_PASSWORD]))
       ->toBeFalse();
   } catch (Exception $exception) {
@@ -74,7 +74,7 @@ it('can fail to authenticate a user with missing email', function() {
 
 it('can fail to authenticate a user with missing password', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     expect($strategy->authenticate(['email' => TEST_EMAIL]))
       ->toBeFalse();
   } catch (Exception $exception) {
@@ -86,7 +86,7 @@ it('can fail to authenticate a user with missing password', function() {
 it('can check if a user is not authenticated', function() {
   try {
     $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer invalid_token';
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     expect($strategy->isAuthenticated())
       ->toBeFalse();
   } catch (Exception $exception) {
@@ -96,7 +96,7 @@ it('can check if a user is not authenticated', function() {
 
 it('can get the user', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
       $this->fail('Failed to authenticate user');
     }
@@ -111,7 +111,7 @@ it('can get the user', function() {
 
 it('can logout a user', function() {
   try {
-    $strategy = new JwtAuthStrategy($this->user, ['secret_key' => JWT_SECRET]);
+    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
     if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
       $this->fail('Failed to authenticate user');
     }

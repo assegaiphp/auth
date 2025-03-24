@@ -90,7 +90,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
     $passwordField = $this->authPasswordField;
 
     if (
-      !is_object($this->user) ||
+      !is_object($this->userData) ||
       !property_exists($this->userData, $usernameField) ||
       !property_exists($this->userData, $passwordField)
     ) {
