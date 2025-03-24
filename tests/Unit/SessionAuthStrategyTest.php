@@ -13,12 +13,12 @@ beforeEach(function() {
 });
 
 it('can be instantiated', function () {
-    expect(new SessionAuthStrategy($this->user))
+    expect(new SessionAuthStrategy(['user' => $this->user]))
       ->toBeInstanceOf(SessionAuthStrategy::class);
 });
 
 it('can authenticate a user', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]))
@@ -29,7 +29,7 @@ it('can authenticate a user', function () {
 });
 
 it('can fail to authenticate a user', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => 'wrongpassword']))
@@ -40,7 +40,7 @@ it('can fail to authenticate a user', function () {
 });
 
 it('can fail to authenticate a user with missing email', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['password' => TEST_PASSWORD]);
@@ -50,7 +50,7 @@ it('can fail to authenticate a user with missing email', function () {
 });
 
 it('can fail to authenticate a user with missing password', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['email' => TEST_EMAIL]);
@@ -60,7 +60,7 @@ it('can fail to authenticate a user with missing password', function () {
 });
 
 it('can fail to authenticate a user with missing email and password', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate([]);
@@ -70,7 +70,7 @@ it('can fail to authenticate a user with missing email and password', function (
 });
 
 it('can check if a user is authenticated', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
@@ -81,7 +81,7 @@ it('can check if a user is authenticated', function () {
 });
 
 it('can check if a user is not authenticated', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
   $_SESSION = [];
 
   try {
@@ -93,7 +93,7 @@ it('can check if a user is not authenticated', function () {
 });
 
 it('can get the user', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
@@ -106,7 +106,7 @@ it('can get the user', function () {
 });
 
 it('can get the user with password removed', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
@@ -121,7 +121,7 @@ it('can get the user with password removed', function () {
 });
 
 it('can logout a user', function () {
-  $strategy = new SessionAuthStrategy($this->user);
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
   try {
     $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
