@@ -1,6 +1,6 @@
 {
     "name": "assegaiphp/auth",
-    "description": "A progressive PHP framework for building efficient and scalable server-side applications.",
+    "description": "Authentication strategies for AssegaiPHP and standalone PHP applications.",
     "type": "library",
     "require-dev": {
         "pestphp/pest": "^3.7",

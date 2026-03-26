@@ -3,131 +3,113 @@
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Strategies\SessionAuthStrategy;
 
-beforeEach(function() {
-  define('TEST_EMAIL', 'user@example.com');
-  define('TEST_PASSWORD', 'password');
+beforeEach(function (): void {
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    $_SESSION = [];
+    session_destroy();
+  }
 
-  $this->user = new stdClass();
-  $this->user->email = TEST_EMAIL;
-  $this->user->password = password_hash(TEST_PASSWORD, PASSWORD_DEFAULT);
+  $_SESSION = [];
+  $_COOKIE = [];
+
+  $this->email = 'user@example.com';
+  $this->password = 'password';
+  $this->user = (object) [
+    'id' => 7,
+    'email' => $this->email,
+    'password' => password_hash($this->password, PASSWORD_DEFAULT),
+    'name' => 'Test User',
+  ];
+});
+
+afterEach(function (): void {
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    $_SESSION = [];
+    session_destroy();
+  }
+
+  $_SESSION = [];
+  $_COOKIE = [];
 });
 
 it('can be instantiated', function () {
-    expect(new SessionAuthStrategy(['user' => $this->user]))
-      ->toBeInstanceOf(SessionAuthStrategy::class);
+  expect(new SessionAuthStrategy(['user' => $this->user]))
+    ->toBeInstanceOf(SessionAuthStrategy::class);
 });
 
 it('can authenticate a user', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
-  try {
-    expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]))
-      ->toBeTrue();
-  } catch (Exception) {
-    $this->fail('Authentication test failed');
-  }
+  expect($strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]))->toBeTrue();
 });
 
-it('can fail to authenticate a user', function () {
+it('fails when the password is wrong', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
-  try {
-    expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => 'wrongpassword']))
-      ->toBeFalse();
-  } catch (Exception) {
-    $this->fail('Authentication test failed');
-  }
+  expect($strategy->authenticate([
+    'email' => $this->email,
+    'password' => 'wrongpassword',
+  ]))->toBeFalse();
 });
 
-it('can fail to authenticate a user with missing email', function () {
+it('throws for malformed credentials', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
-  try {
-    $strategy->authenticate(['password' => TEST_PASSWORD]);
-  } catch (Exception $exception) {
-    expect($exception)->toBeInstanceOf(MalformedCredentialsException::class);
-  }
+  expect(fn () => $strategy->authenticate(['email' => $this->email]))
+    ->toThrow(MalformedCredentialsException::class);
 });
 
-it('can fail to authenticate a user with missing password', function () {
+it('can report authentication state', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
+  $strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
 
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL]);
-  } catch (Exception $exception) {
-    expect($exception)->toBeInstanceOf(MalformedCredentialsException::class);
-  }
+  expect($strategy->isAuthenticated())->toBeTrue();
 });
 
-it('can fail to authenticate a user with missing email and password', function () {
+it('can read the authenticated user without the password field', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
+  $strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
 
-  try {
-    $strategy->authenticate([]);
-  } catch (Exception $exception) {
-    expect($exception)->toBeInstanceOf(MalformedCredentialsException::class);
-  }
+  $authenticatedUser = $strategy->getUser();
+
+  expect($authenticatedUser)
+    ->toBeObject()
+    ->toHaveProperty('email', $this->email)
+    ->toHaveProperty('name', 'Test User')
+    ->not->toHaveProperty('password');
 });
 
-it('can check if a user is authenticated', function () {
+it('can establish a trusted authenticated user directly', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
+  $strategy->establishAuthenticatedUser((object) [
+    'id' => 99,
+    'email' => 'oauth@example.com',
+    'name' => 'OAuth User',
+  ]);
 
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
-    expect($strategy->isAuthenticated())->toBeTrue();
-  } catch (Exception) {
-    $this->fail('Authentication test failed');
-  }
-});
-
-it('can check if a user is not authenticated', function () {
-  $strategy = new SessionAuthStrategy(['user' => $this->user]);
-  $_SESSION = [];
-
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL, 'password' => 'wrongpassword']);
-    expect($strategy->isAuthenticated())->toBeFalse();
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
-});
-
-it('can get the user', function () {
-  $strategy = new SessionAuthStrategy(['user' => $this->user]);
-
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
-    $expectedUser = clone $this->user;
-    unset($expectedUser->password);
-    expect($strategy->getUser())->toEqual($expectedUser);
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
-});
-
-it('can get the user with password removed', function () {
-  $strategy = new SessionAuthStrategy(['user' => $this->user]);
-
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
-    expect($strategy->getUser())
-      ->not()
-      ->toHaveKey('password')
-      ->and($this->user)
-      ->toHaveKey('password');
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+  expect($strategy->isAuthenticated())->toBeTrue()
+    ->and($strategy->getUser())
+    ->toHaveProperty('email', 'oauth@example.com');
 });
 
 it('can logout a user', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
+  $strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
 
-  try {
-    $strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]);
-    $strategy->logout();
-    expect($strategy->isAuthenticated())->toBeFalse();
-  } catch (Exception) {
-    $this->fail('Authentication test failed');
-  }
+  $strategy->logout();
+
+  expect($strategy->isAuthenticated())->toBeFalse()
+    ->and($strategy->getUser())->toBeNull();
 });
