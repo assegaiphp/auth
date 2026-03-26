@@ -90,26 +90,21 @@ class SessionAuthStrategy implements AuthStrategyInterface
       return false;
     }
 
-    if (session_status() === PHP_SESSION_NONE) {
-      session_start();
-    }
-    $user = clone $this->user;
-    unset($user->$passwordField);
-    $_SESSION[self::SESSION_USER_FIELD] = $user;
-    if ($this->sessionName) {
-      if ( false === session_name($this->sessionName) ) {
-        throw new AuthException('Failed to set session name.');
-      }
-    }
-
-    if ($this->sessionLifetime) {
-      $lifetime = is_string($this->sessionLifetime) ? strtotime($this->sessionLifetime) : $this->sessionLifetime;
-      if ( false === session_set_cookie_params($lifetime) ) {
-        throw new AuthException('Failed to set session lifetime.');
-      }
-    }
-
+    $this->establishAuthenticatedUser($this->user);
     return true;
+  }
+
+  /**
+   * Establishes a trusted authenticated user without re-validating credentials.
+   *
+   * @param object $user
+   * @return void
+   * @throws AuthException
+   */
+  public function establishAuthenticatedUser(object $user): void
+  {
+    $this->ensureSessionStarted();
+    $_SESSION[self::SESSION_USER_FIELD] = $this->sanitizeUser($user);
   }
 
   /**
@@ -117,9 +112,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
    */
   public function isAuthenticated(): bool
   {
-    if (session_status() === PHP_SESSION_NONE) {
-      session_start();
-    }
+    $this->ensureSessionStarted();
     return isset($_SESSION[self::SESSION_USER_FIELD]);
   }
 
@@ -128,9 +121,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
    */
   public function getUser(): ?object
   {
-    if (session_status() === PHP_SESSION_NONE) {
-      session_start();
-    }
+    $this->ensureSessionStarted();
     return $_SESSION[self::SESSION_USER_FIELD] ?? null;
   }
 
@@ -140,8 +131,153 @@ class SessionAuthStrategy implements AuthStrategyInterface
   public function logout(): void
   {
     if (session_status() === PHP_SESSION_NONE) {
-      session_start();
+      $this->ensureSessionStarted();
     }
-    session_destroy();
+
+    $_SESSION = [];
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+      $params = session_get_cookie_params();
+
+      if (session_name() !== '') {
+        setcookie(
+          session_name(),
+          '',
+          [
+            'expires' => time() - 42000,
+            'path' => $params['path'] ?? '/',
+            'domain' => $params['domain'] ?? '',
+            'secure' => (bool) ($params['secure'] ?? false),
+            'httponly' => (bool) ($params['httponly'] ?? true),
+            'samesite' => $params['samesite'] ?? 'Lax',
+          ]
+        );
+      }
+
+      session_destroy();
+    }
+  }
+
+  /**
+   * @throws AuthException
+   */
+  protected function ensureSessionStarted(): void
+  {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+      return;
+    }
+
+    if ($this->shouldUsePseudoSession()) {
+      if (!isset($_SESSION) || !is_array($_SESSION)) {
+        $_SESSION = [];
+      }
+
+      return;
+    }
+
+    $this->prepareSessionStorage();
+
+    $useCookies = $this->shouldUseSessionCookies();
+
+    if ($this->sessionName && session_name() !== $this->sessionName) {
+      if (false === session_name($this->sessionName)) {
+        throw new AuthException('Failed to set session name.');
+      }
+    }
+
+    $cookieLifetime = $this->resolveSessionLifetime();
+
+    if ($useCookies && $cookieLifetime !== null) {
+      $params = session_get_cookie_params();
+
+      if (false === session_set_cookie_params([
+        'lifetime' => $cookieLifetime,
+        'path' => $params['path'] ?? '/',
+        'domain' => $params['domain'] ?? '',
+        'secure' => (bool) ($params['secure'] ?? false),
+        'httponly' => (bool) ($params['httponly'] ?? true),
+        'samesite' => $params['samesite'] ?? 'Lax',
+      ])) {
+        throw new AuthException('Failed to set session lifetime.');
+      }
+    }
+
+    $sessionOptions = [];
+
+    if (!$useCookies) {
+      $sessionOptions = [
+        'use_cookies' => 0,
+        'cache_limiter' => '',
+      ];
+    }
+
+    if (false === session_start($sessionOptions)) {
+      throw new AuthException('Failed to start the session.');
+    }
+  }
+
+  protected function sanitizeUser(object $user): object
+  {
+    $sanitized = clone $user;
+    $passwordField = $this->passwordField;
+
+    if (property_exists($sanitized, $passwordField)) {
+      unset($sanitized->$passwordField);
+    }
+
+    return $sanitized;
+  }
+
+  protected function resolveSessionLifetime(): ?int
+  {
+    if ($this->sessionLifetime === null || $this->sessionLifetime === '') {
+      return null;
+    }
+
+    if (is_int($this->sessionLifetime)) {
+      return max(0, $this->sessionLifetime);
+    }
+
+    $timestamp = strtotime($this->sessionLifetime, time());
+
+    if ($timestamp === false) {
+      throw new AuthException('Invalid session lifetime value.');
+    }
+
+    return max(0, $timestamp - time());
+  }
+
+  protected function shouldUseSessionCookies(): bool
+  {
+    return PHP_SAPI !== 'cli' && PHP_SAPI !== 'phpdbg' && !headers_sent();
+  }
+
+  protected function shouldUsePseudoSession(): bool
+  {
+    return (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') && headers_sent();
+  }
+
+  /**
+   * @throws AuthException
+   */
+  protected function prepareSessionStorage(): void
+  {
+    if (PHP_SAPI !== 'cli' && PHP_SAPI !== 'phpdbg') {
+      return;
+    }
+
+    if (session_module_name() !== 'files') {
+      return;
+    }
+
+    $savePath = sys_get_temp_dir() . '/assegaiphp-auth-sessions';
+
+    if (!is_dir($savePath) && !mkdir($savePath, 0777, true) && !is_dir($savePath)) {
+      throw new AuthException('Failed to prepare the session storage directory.');
+    }
+
+    if (false === session_save_path($savePath)) {
+      throw new AuthException('Failed to configure the session storage directory.');
+    }
   }
 }

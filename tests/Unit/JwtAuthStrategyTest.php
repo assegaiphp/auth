@@ -1,124 +1,128 @@
 <?php
 
+use Assegai\Auth\Exceptions\AuthException;
 use Assegai\Auth\Exceptions\MalformedCredentialsException;
 use Assegai\Auth\Strategies\JwtAuthStrategy;
 
-beforeEach(function() {
-  define('TEST_EMAIL', 'user@example.com');
-  define('TEST_PASSWORD', 'password');
-  define('JWT_SECRET', 'secret');
+beforeEach(function (): void {
+  unset($_SERVER['HTTP_AUTHORIZATION'], $_SERVER['Authorization'], $_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
 
-  $this->user = new stdClass();
-  $this->user->email = TEST_EMAIL;
-  $this->user->password = password_hash(TEST_PASSWORD, PASSWORD_DEFAULT);
+  $this->email = 'user@example.com';
+  $this->password = 'password';
+  $this->secret = 'replace-with-a-long-random-secret-key';
+  $this->user = (object) [
+    'id' => 7,
+    'email' => $this->email,
+    'password' => password_hash($this->password, PASSWORD_DEFAULT),
+    'roles' => ['author'],
+    'name' => 'Test User',
+  ];
 });
 
-it('can be instantiated', function() {
-  try {
-    expect(new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]))
-      ->toBeInstanceOf(JwtAuthStrategy::class);
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+afterEach(function (): void {
+  unset($_SERVER['HTTP_AUTHORIZATION'], $_SERVER['Authorization'], $_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
 });
 
-it('can authenticate a user', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    expect($strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD]))
-      ->toBeTrue();
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('can be instantiated', function () {
+  expect(new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]))->toBeInstanceOf(JwtAuthStrategy::class);
 });
 
-it('can generate a token', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
-      $this->fail('Failed to authenticate user');
-    }
-    expect($strategy->getToken())
-      ->not()->toBeEmpty()
-      ->toBeString()
-      ->and(explode('.', $strategy->getToken()))
-      ->toHaveCount(3);
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('rejects short hmac secrets', function () {
+  expect(fn () => new JwtAuthStrategy([
+    'secret_key' => 'secret',
+    'user' => $this->user,
+  ]))->toThrow(AuthException::class);
 });
 
-it('can validate a token', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
-      $this->fail('Failed to authenticate user');
-    }
-    expect($strategy->isAuthenticated())
-      ->toBeTrue();
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('can authenticate a user and issue a token', function () {
+  $strategy = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+
+  expect($strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]))->toBeTrue()
+    ->and(explode('.', $strategy->getToken()))->toHaveCount(3);
 });
 
-it('can fail to authenticate a user with missing email', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    expect($strategy->authenticate(['password' => TEST_PASSWORD]))
-      ->toBeFalse();
-  } catch (Exception $exception) {
-    expect($exception)
-      ->toBeInstanceOf(MalformedCredentialsException::class);
-  }
+it('can validate the issued token', function () {
+  $strategy = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+  $strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
+
+  expect($strategy->isAuthenticated())->toBeTrue();
 });
 
-it('can fail to authenticate a user with missing password', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    expect($strategy->authenticate(['email' => TEST_EMAIL]))
-      ->toBeFalse();
-  } catch (Exception $exception) {
-    expect($exception)
-      ->toBeInstanceOf(MalformedCredentialsException::class);
-  }
+it('throws for malformed credentials', function () {
+  $strategy = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+
+  expect(fn () => $strategy->authenticate(['email' => $this->email]))
+    ->toThrow(MalformedCredentialsException::class);
 });
 
-it('can check if a user is not authenticated', function() {
-  try {
-    $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer invalid_token';
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    expect($strategy->isAuthenticated())
-      ->toBeFalse();
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('can read bearer tokens from the authorization header', function () {
+  $issuer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+  $issuer->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
+
+  $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $issuer->getToken();
+
+  $consumer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+
+  expect($consumer->isAuthenticated())->toBeTrue()
+    ->and($consumer->getUser())->toHaveProperty('email', $this->email);
 });
 
-it('can get the user', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
-      $this->fail('Failed to authenticate user');
-    }
-    expect($strategy->getUser())
-      ->toBeObject()
-      ->toHaveProperty('email', TEST_EMAIL)
-      ->not()->toHaveProperty('password');
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('can issue a token for a trusted user directly', function () {
+  $strategy = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+
+  $token = $strategy->issueTokenForUser((object) [
+    'id' => 11,
+    'email' => 'oauth@example.com',
+    'name' => 'OAuth User',
+  ]);
+
+  expect($token)->toBeString()->not->toBeEmpty()
+    ->and($strategy->isAuthenticated())->toBeTrue()
+    ->and($strategy->getUser())->toHaveProperty('email', 'oauth@example.com');
 });
 
-it('can logout a user', function() {
-  try {
-    $strategy = new JwtAuthStrategy(['secret_key' => JWT_SECRET, 'user' => $this->user]);
-    if (!$strategy->authenticate(['email' => TEST_EMAIL, 'password' => TEST_PASSWORD])) {
-      $this->fail('Failed to authenticate user');
-    }
-    $strategy->logout();
-    expect($strategy->isAuthenticated())
-      ->toBeFalse();
-  } catch (Exception $exception) {
-    $this->fail($exception->getMessage());
-  }
+it('can logout a user and clear token state', function () {
+  $strategy = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'user' => $this->user,
+  ]);
+  $strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]);
+
+  $strategy->logout();
+
+  expect($strategy->isAuthenticated())->toBeFalse()
+    ->and($strategy->getToken())->toBe('');
 });

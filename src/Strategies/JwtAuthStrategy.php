@@ -72,6 +72,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
   {
     $this->userData = $config['user'] ?? new stdClass();
     $this->secretKey = $config['secret_key'] ?? throw new AuthException('Invalid secret key.');
+    $this->assertSecretKeyStrength($this->secretKey);
     $this->algorithm = $config['algorithm'] ?? 'HS256';
     $this->audience = $config['audience'] ?? '';
     $this->issuer = $config['issuer'] ?? 'assegaiphp';
@@ -112,48 +113,23 @@ class JwtAuthStrategy implements AuthStrategyInterface
       return false;
     }
 
-    // Generate JWT token.
-    $lifetime = $this->tokenLifetime;
-
-    if (!$lifetime) {
-      $lifetime = '1 hour';
-    }
-
-    if (is_string($lifetime)) {
-      $lifetime = strtotime($lifetime);
-    }
-
-    $payload = [
-      'sub' => $this->userData->id ?? $this->userData->$usernameField,
-      $usernameField => $this->userData->$usernameField,
-      'iat' => time(),
-      'exp' => $lifetime,
-    ];
-
-    if ($this->issuer) {
-      $payload['iss'] = $this->issuer;
-    }
-
-    if ($this->audience) {
-      $payload['aud'] = $this->audience;
-    }
-
-    if (isset($this->userData->roles)) {
-      $payload['roles'] = $this->userData->roles;
-    }
-
-    if (isset($this->userData->name)) {
-      $payload['name'] = $this->userData->name;
-    }
-
-    if (isset($this->userData->firstName) && isset($this->userData->lastName)) {
-      $payload['name'] = "{$this->userData->firstName} {$this->userData->lastName}";
-    }
-
-    $this->token = JWT::encode($payload, $this->secretKey, $this->algorithm);
-    $this->user = (object)$payload;
-
+    $this->issueTokenForUser($this->userData);
     return true;
+  }
+
+  /**
+   * Issues a token for a trusted user object without re-validating credentials.
+   *
+   * @param object $user
+   * @return string
+   */
+  public function issueTokenForUser(object $user): string
+  {
+    $payload = $this->buildPayload($user);
+    $this->token = JWT::encode($payload, $this->secretKey, $this->algorithm);
+    $this->user = (object) $payload;
+
+    return $this->token;
   }
 
   /**
@@ -161,17 +137,16 @@ class JwtAuthStrategy implements AuthStrategyInterface
    */
   public function isAuthenticated(): bool
   {
-    if (!isset($_SERVER['HTTP_AUTHORIZATION']) && !$this->token) {
+    $token = $this->token ?: $this->resolveBearerToken();
+
+    if (!$token) {
       return false;
     }
 
-    $token = $this->token;
-    if (!$token) {
-      $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION']);
-    }
     try {
       $decoded = JWT::decode($token, new Key($this->secretKey, $this->algorithm));
       $this->user = $decoded;
+      $this->token = $token;
     } catch (Exception) {
       return false;
     }
@@ -193,6 +168,7 @@ class JwtAuthStrategy implements AuthStrategyInterface
   public function logout(): void
   {
     $this->user = null;
+    $this->token = '';
   }
 
   /**
@@ -213,5 +189,101 @@ class JwtAuthStrategy implements AuthStrategyInterface
   public function getDecoded(): stdClass
   {
     return JWT::decode($this->token, new Key($this->secretKey, $this->algorithm));
+  }
+
+  protected function buildPayload(object $user): array
+  {
+    $usernameField = $this->authUsernameField;
+    $issuedAt = time();
+
+    if (!property_exists($user, $usernameField)) {
+      throw new AuthException("The user object must expose the configured username field '{$usernameField}'.");
+    }
+
+    $payload = [
+      'sub' => $user->id ?? $user->$usernameField,
+      $usernameField => $user->$usernameField,
+      'iat' => $issuedAt,
+      'exp' => $this->resolveTokenExpiry($issuedAt),
+    ];
+
+    if ($this->issuer) {
+      $payload['iss'] = $this->issuer;
+    }
+
+    if ($this->audience) {
+      $payload['aud'] = $this->audience;
+    }
+
+    if (isset($user->roles)) {
+      $payload['roles'] = $user->roles;
+    }
+
+    if (isset($user->name)) {
+      $payload['name'] = $user->name;
+    }
+
+    if (isset($user->firstName) && isset($user->lastName)) {
+      $payload['name'] = "{$user->firstName} {$user->lastName}";
+    }
+
+    return $payload;
+  }
+
+  protected function resolveTokenExpiry(int $issuedAt): int
+  {
+    $lifetime = $this->tokenLifetime;
+
+    if ($lifetime === null || $lifetime === '') {
+      return $issuedAt + 3600;
+    }
+
+    if (is_int($lifetime)) {
+      return $issuedAt + max(0, $lifetime);
+    }
+
+    $timestamp = strtotime($lifetime, $issuedAt);
+
+    if ($timestamp === false) {
+      throw new AuthException('Invalid token lifetime value.');
+    }
+
+    return $timestamp;
+  }
+
+  protected function resolveBearerToken(): ?string
+  {
+    $candidates = [
+      $_SERVER['HTTP_AUTHORIZATION'] ?? null,
+      $_SERVER['Authorization'] ?? null,
+      $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null,
+    ];
+
+    if (function_exists('apache_request_headers')) {
+      foreach ((array) apache_request_headers() as $name => $value) {
+        if (strtolower((string) $name) === 'authorization') {
+          $candidates[] = $value;
+        }
+      }
+    }
+
+    foreach ($candidates as $header) {
+      if (!is_string($header) || $header === '') {
+        continue;
+      }
+
+      if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $header, $matches) === 1) {
+        return trim($matches[1]);
+      }
+    }
+
+    return null;
+  }
+
+  protected function assertSecretKeyStrength(string $secretKey): void
+  {
+    if (str_starts_with($this->algorithm, 'HS') && strlen($secretKey) < 32) {
+      throw new AuthException('Secret key must be at least 32 characters for HMAC algorithms.');
+    }
   }
 }

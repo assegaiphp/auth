@@ -1,221 +1,372 @@
 <div align="center" style="padding-bottom: 48px">
-    <a href="https://assegaiphp.com/" target="blank"><img src="https://assegaiphp.com/images/logos/logo-cropped.png" width="200" alt="Assegai Logo"></a>
+  <a href="https://assegaiphp.com/" target="_blank" rel="noreferrer">
+    <img src="https://assegaiphp.com/images/logos/logo-cropped.png" width="200" alt="Assegai Logo">
+  </a>
 </div>
 
-<p style="text-align: center">A progressive <a href="https://php.net">PHP</a> framework for building effecient and scalable server-side applications.</p>
+<p align="center">
+  Authentication strategies for AssegaiPHP and standalone PHP applications.
+</p>
 
-## Description
+## Overview
 
-The Assegai Auth library provides authentication and authorization services. The library is built around an AuthStrategy interface that allows for the implementation of different authentication strategies. The library also provides a default strategy that uses JWT tokens for authentication.
+`assegaiphp/auth` is a small authentication package built around focused strategies instead of a full auth framework.
 
-This PHP library provides a flexible and modular way to implement various authentication strategies in your custom web framework. It includes support for session-based authentication, token-based authentication (JWT), OAuth 2.0, and more. The library is designed to be extensible, allowing you to easily add new authentication methods as needed.
+Today the package ships with:
 
----
+- `SessionAuthStrategy` for session-backed login state
+- `JwtAuthStrategy` for stateless JWT authentication
+- `OAuth2AuthStrategy` for OAuth 2.0 authorization-code login flows
+- `GitHubOAuthProvider` as the first ready-to-use OAuth provider adapter
+
+The package is intentionally narrow. It helps you:
+
+- authenticate a known user object
+- issue session or JWT auth state
+- begin and complete OAuth 2.0 login flows
+- hand a resolved OAuth user into session or JWT auth
+
+It does not currently provide:
+
+- user lookup or persistence
+- registration or password reset flows
+- refresh token rotation
+- OAuth route/controllers for you
+- OAuth guard wiring
+- multiple polished provider adapters beyond GitHub
+
+You still own the application flow around it: loading users, choosing when to authenticate, defining routes, and deciding what to do after login succeeds.
 
 ## Installation
-You can install the library via Composer:
 
 ```bash
 composer require assegaiphp/auth
 ```
 
----
+## Session Authentication
 
-## Usage
-
-### Basic Example
-Here's a quick example of how to use the library with the session-based authentication strategy:
+Use `SessionAuthStrategy` when you want the authenticated user stored in `$_SESSION`.
 
 ```php
 <?php
 
-require 'vendor/autoload.php';
+use Assegai\Auth\Strategies\SessionAuthStrategy;
 
-use Assegai\Auth\Interfaces\SessionAuthStrategy;
-
-// Get user object from Data Source e.g. Database
-$user = (object)[
+$user = (object) [
+  'id' => 7,
   'email' => 'user@example.com',
-  'password' => '...', // Hashed password
+  'password' => password_hash('secret', PASSWORD_DEFAULT),
+  'name' => 'Test User',
 ];
 
-$authStrategy = new SessionAuthStrategy($user);
+$strategy = new SessionAuthStrategy([
+  'user' => $user,
+  'session_name' => 'blog_api',
+  'session_lifetime' => '+1 hour',
+]);
 
-if ($authStrategy->authenticate(['email' => 'user@example.com', 'password' => 'password'])) {
-    echo "Authenticated! User: " . print_r($authStrategy->getUser(), true);
-} else {
-    echo "Authentication failed!";
+if ($strategy->authenticate([
+  'email' => 'user@example.com',
+  'password' => 'secret',
+])) {
+  $currentUser = $strategy->getUser();
 }
 ```
 
-### Switching Strategies
-You can easily switch between different authentication strategies:
+### Session behavior
+
+On successful authentication the strategy:
+
+- starts a session if needed
+- clones the configured user object
+- removes the password field from that clone
+- stores the sanitized user in `$_SESSION['user']`
+
+### Trusted session handoff
+
+This is useful after an OAuth callback, when the user has already been verified by the provider and you just want to establish a local session.
+
+```php
+$strategy->establishAuthenticatedUser((object) [
+  'id' => 42,
+  'email' => 'oauth@example.com',
+  'name' => 'OAuth User',
+]);
+```
+
+## JWT Authentication
+
+Use `JwtAuthStrategy` when you want to issue a JWT and later validate it from a bearer token or from a token you pass into the strategy config.
 
 ```php
 <?php
 
-use Assegai\Auth\SessionAuthStrategy;
-use Assegai\Auth\JwtAuthStrategy;
+use Assegai\Auth\Strategies\JwtAuthStrategy;
 
-// Get user object from Data Source e.g. Database
-$user = (object)[
+$user = (object) [
+  'id' => 7,
   'email' => 'user@example.com',
-  'password' => '...', // Hashed password
+  'password' => password_hash('secret', PASSWORD_DEFAULT),
+  'roles' => ['author'],
+  'name' => 'Test User',
 ];
-$secretKey = 'your-secret-key';
-$audience = 'your-audience';
-$issuer = 'your-issuer';
 
-// Use session-based authentication
-$authStrategy = new SessionAuthStrategy($user);
+$strategy = new JwtAuthStrategy([
+  'user' => $user,
+  'secret_key' => 'replace-with-a-long-random-secret-key',
+  'issuer' => 'blog-api',
+  'audience' => 'blog-api-clients',
+  'token_lifetime' => '+1 hour',
+]);
 
-// Or use JWT-based authentication
-$authStrategy = new JwtAuthStrategy($user, ['secret_key' => $secretKey, 'audience' => $audience, 'issuer' => $issuer]);
+if ($strategy->authenticate([
+  'email' => 'user@example.com',
+  'password' => 'secret',
+])) {
+  $token = $strategy->getToken();
+}
 ```
 
----
+### JWT behavior
 
-## Available Strategies
-The library currently supports the following authentication strategies:
+On successful authentication the strategy creates a token payload with:
 
-1. **Session-Based Authentication**
-    - Stores user data in server-side sessions.
-    - Ideal for traditional web applications.
+- `sub`
+- the configured username field
+- `iat`
+- `exp`
+- optional `iss`
+- optional `aud`
+- optional `roles`
+- optional `name`
 
-2. **Token-Based Authentication (JWT)**
-    - Uses JSON Web Tokens (JWT) for stateless authentication.
-    - Suitable for APIs and single-page applications (SPAs).
+`isAuthenticated()` validates either:
 
-## Future Strategies
-1. **OAuth 2.0**
-    - Integrates with third-party OAuth providers (e.g., Google, Facebook).
-    - Enables single sign-on (SSO) and social login.
+- the token generated by the strategy, or
+- the `Authorization: Bearer ...` header when one is present
 
-2. **API Key Authentication**
-    - Authenticates clients using API keys.
-    - Designed for machine-to-machine (M2M) communication.
+### Trusted JWT handoff
 
-3. **Passwordless Authentication**
-    - Authenticates users using magic links or one-time codes.
-    - Eliminates the need for passwords.
+This is useful after an OAuth callback when you want to mint a local API token for a provider-authenticated user.
 
----
-
-## Configuration
-Each authentication strategy can be configured to suit your application's needs. Below are examples of configuration options:
-
-### Session-Based Authentication
 ```php
-$authStrategy = new SessionAuthStrategy([
-    'session_name' => 'my_app_session',
-    'session_lifetime' => 3600, // 1 hour
+$token = $strategy->issueTokenForUser((object) [
+  'id' => 42,
+  'email' => 'oauth@example.com',
+  'name' => 'OAuth User',
+  'roles' => ['member'],
 ]);
 ```
 
-### JWT-Based Authentication
-```php
-$authStrategy = new JwtAuthStrategy([
-    'secret_key' => 'your-secret-key',
-    'algorithm' => 'HS256',
-    'token_lifetime' => 3600, // 1 hour
-]);
-```
+## OAuth 2.0
 
-### OAuth 2.0
-```php
-$authStrategy = new OAuthAuthStrategy([
-    'client_id' => 'your-client-id',
-    'client_secret' => 'your-client-secret',
-    'redirect_uri' => 'https://your-app.com/callback',
-]);
-```
+Use `OAuth2AuthStrategy` when you need an authorization-code flow such as "Sign in with GitHub".
 
----
+Unlike the session and JWT strategies, OAuth is a redirect-based flow, so it does not implement `AuthStrategyInterface`.
 
-## Advanced Usage
+The OAuth flow is split into two steps:
 
-### Custom Strategies
-You can create custom authentication strategies by implementing the `AuthStrategyInterface`:
+1. build the authorization request and redirect the user
+2. handle the callback and establish local auth state
+
+### GitHub example
 
 ```php
 <?php
 
-use Assegai\Auth\AuthStrategyInterface;
+use Assegai\Auth\OAuth\OAuth2AuthStrategy;
+use Assegai\Auth\OAuth\Providers\GitHubOAuthProvider;
+use Assegai\Auth\OAuth\State\SessionOAuthStateStore;
+use Assegai\Auth\Strategies\SessionAuthStrategy;
+
+$sessionStrategy = new SessionAuthStrategy([
+  'user' => (object) [],
+  'session_name' => 'blog_api',
+]);
+
+$oauth = new OAuth2AuthStrategy(
+  provider: new GitHubOAuthProvider(),
+  config: GitHubOAuthProvider::defaultConfig(
+    clientId: 'your-github-client-id',
+    clientSecret: 'your-github-client-secret',
+    redirectUri: 'https://example.com/auth/github/callback',
+  ),
+  stateStore: new SessionOAuthStateStore(),
+  sessionStrategy: $sessionStrategy,
+);
+
+$request = $oauth->beginLogin();
+
+header('Location: ' . $request->url);
+exit;
+```
+
+### Handling the callback
+
+```php
+<?php
+
+use Assegai\Auth\OAuth\OAuth2AuthStrategy;
+use Assegai\Auth\OAuth\Providers\GitHubOAuthProvider;
+use Assegai\Auth\OAuth\State\SessionOAuthStateStore;
+use Assegai\Auth\Strategies\JwtAuthStrategy;
+use Assegai\Auth\Strategies\SessionAuthStrategy;
+
+$sessionStrategy = new SessionAuthStrategy([
+  'user' => (object) [],
+]);
+
+$jwtStrategy = new JwtAuthStrategy([
+  'secret_key' => 'replace-with-a-long-random-secret-key',
+  'user' => (object) [
+    'email' => 'placeholder@example.com',
+    'password' => password_hash('placeholder', PASSWORD_DEFAULT),
+  ],
+]);
+
+$oauth = new OAuth2AuthStrategy(
+  provider: new GitHubOAuthProvider(),
+  config: GitHubOAuthProvider::defaultConfig(
+    clientId: 'your-github-client-id',
+    clientSecret: 'your-github-client-secret',
+    redirectUri: 'https://example.com/auth/github/callback',
+  ),
+  stateStore: new SessionOAuthStateStore(),
+  sessionStrategy: $sessionStrategy,
+  jwtStrategy: $jwtStrategy,
+);
+
+$result = $oauth->handleCallback($_GET);
+
+// $result->user
+// $result->profile
+// $result->sessionEstablished
+// $result->jwtToken
+```
+
+### What OAuth2AuthStrategy does
+
+`OAuth2AuthStrategy`:
+
+- generates a secure state value
+- generates PKCE verifier/challenge by default
+- stores the state in the configured `OAuthStateStoreInterface`
+- exchanges the callback code for tokens
+- fetches the provider profile
+- resolves a local user object
+- optionally hands that user into session and/or JWT auth
+
+### Current OAuth boundaries
+
+What is ready today:
+
+- generic OAuth provider interface
+- PKCE-enabled authorization code flow
+- session-backed state store
+- GitHub provider adapter
+- local session/JWT handoff
+
+What you still provide:
+
+- the login route
+- the callback route
+- any persistence or lookup logic for provider users
+- redirects or API responses after login
+
+## Custom OAuth providers
+
+If GitHub is not the right provider, implement `OAuthProviderInterface`.
+
+You need to provide:
+
+- a provider name
+- how to build the authorization URL
+- how to exchange a code for tokens
+- how to fetch the provider user profile
+
+You can also extend `AbstractOAuthProvider` to reuse the common HTTP and URL-building helpers.
+
+## Using the strategy interface
+
+If the built-in session or JWT strategies are not the right fit, implement `AuthStrategyInterface`.
+
+```php
+<?php
+
+use Assegai\Auth\Interfaces\AuthStrategyInterface;
 
 class CustomAuthStrategy implements AuthStrategyInterface
 {
-    public function authenticate(array $credentials): bool
-    {
-        // Implement custom authentication logic.
-    }
+  public function authenticate(array $credentials): bool
+  {
+    return false;
+  }
 
-    public function isAuthenticated(): bool
-    {
-        // Implement custom logic to check if the user is authenticated.
-    }
+  public function isAuthenticated(): bool
+  {
+    return false;
+  }
 
-    public function getUser(): ?array
-    {
-        // Implement custom logic to retrieve user data.
-    }
+  public function getUser(): ?object
+  {
+    return null;
+  }
 
-    public function logout(): void
-    {
-        // Implement custom logout logic.
-    }
+  public function logout(): void
+  {
+  }
 }
 ```
 
-### Middleware Integration
-You can integrate the library with your framework's middleware system to protect routes:
+## Pairing with Assegai Core
 
-```php
-$app->addMiddleware(function ($request, $handler) use ($authStrategy) {
-    if (!$authStrategy->isAuthenticated()) {
-        return new Response('Unauthorized', 401);
-    }
-    return $handler->handle($request);
-});
-```
+In an Assegai app, a common pattern is:
 
----
+1. load a user from your repository or service
+2. pass that user into a session or JWT strategy, or complete an OAuth callback
+3. establish local auth state
+4. read authentication state from your guards, providers, or handlers
 
-## API Reference
+This package handles the strategy side of that flow. The application still owns the surrounding request flow.
+
+## API surface
 
 ### `AuthStrategyInterface`
 
 | Method | Description |
 | --- | --- |
-| `authenticate(array $credentials): bool` | Authenticates a user based on the provided credentials. |
-| `isAuthenticated(): bool` | Checks if the user is authenticated. |
-| `getUser(): ?array` | Returns the authenticated user's data. |
-| `logout(): void` | Logs out the user. |
+| `authenticate(array $credentials): bool` | Validates credentials and establishes authentication state. |
+| `isAuthenticated(): bool` | Checks whether the current strategy considers the request authenticated. |
+| `getUser(): ?object` | Returns the authenticated user or token-backed user payload. |
+| `logout(): void` | Clears the current authentication state. |
 
----
+### `SessionAuthStrategy`
 
-## Contributing
-We welcome contributions! Please follow these steps to contribute:
+| Method | Description |
+| --- | --- |
+| `establishAuthenticatedUser(object $user): void` | Establishes trusted session auth without re-checking credentials. |
 
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Submit a pull request with a detailed description of your changes.
+### `JwtAuthStrategy`
 
----
+| Method | Description |
+| --- | --- |
+| `getToken(): string` | Returns the last generated JWT. |
+| `getDecoded(): \stdClass` | Decodes the current JWT with the configured key and algorithm. |
+| `issueTokenForUser(object $user): string` | Issues a JWT for a trusted user object without re-checking credentials. |
+
+### `OAuth2AuthStrategy`
+
+| Method | Description |
+| --- | --- |
+| `beginLogin(): OAuthAuthorizationRequest` | Builds the provider redirect request and persists state/PKCE data. |
+| `handleCallback(array $callback): OAuthLoginResult` | Validates the callback, resolves the provider user, and optionally establishes local auth state. |
+
+## Running tests
+
+```bash
+vendor/bin/pest
+```
 
 ## License
-This library is open-source and licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
----
-
-## Support
-If you encounter any issues or have questions, please open an issue on [GitHub](https://github.com/assegaiphp/auth/issues).
-
----
-
-## Acknowledgments
-- Thanks to the PHP community for their excellent tools and resources.
-- Inspired by [Firebase JWT](https://github.com/firebase/php-jwt) and [OAuth 2.0 Client](https://github.com/thephpleague/oauth2-client).
-
----
-
-This structure ensures that your `README.md` is comprehensive, user-friendly, and covers all the essential information for developers to get started with your library. Let me know if you'd like further refinements!
+MIT. See [LICENSE](LICENSE).
