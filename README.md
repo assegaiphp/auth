@@ -5,6 +5,14 @@
 </div>
 
 <p align="center">
+  <a href="https://github.com/assegaiphp/auth/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/assegaiphp/auth?display_name=tag&sort=semver&style=flat-square"></a>
+  <a href="https://github.com/assegaiphp/auth/actions/workflows/php.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/assegaiphp/auth/php.yml?branch=main&label=tests&style=flat-square"></a>
+  <img alt="PHP 8.3+" src="https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square&logo=php&logoColor=white">
+  <a href="https://github.com/assegaiphp/auth/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/assegaiphp/auth?style=flat-square"></a>
+  <img alt="Status active" src="https://img.shields.io/badge/status-active-10b981?style=flat-square">
+</p>
+
+<p align="center">
   Authentication strategies for AssegaiPHP and standalone PHP applications.
 </p>
 

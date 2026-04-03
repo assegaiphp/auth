@@ -1,0 +1,15 @@
+{
+  "repository": "assegaiphp/auth",
+  "package": "assegaiphp/auth",
+  "php": ">=8.3",
+  "license": "MIT",
+  "ci": {
+    "workflow": "php.yml",
+    "label": "tests"
+  },
+  "status": {
+    "label": "active",
+    "color": "10b981",
+    "summary": "Session, JWT, and OAuth strategies for AssegaiPHP and standalone PHP apps."
+  }
+}
