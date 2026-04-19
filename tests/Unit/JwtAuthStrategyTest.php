@@ -63,6 +63,46 @@ it('can validate the issued token', function () {
   expect($strategy->isAuthenticated())->toBeTrue();
 });
 
+it('rejects tokens with a mismatched issuer', function () {
+  $issuer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'issuer' => 'service-a',
+    'user' => $this->user,
+  ]);
+
+  $token = $issuer->issueTokenForUser($this->user);
+
+  $consumer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'issuer' => 'service-b',
+    'token' => $token,
+    'user' => $this->user,
+  ]);
+
+  expect($consumer->isAuthenticated())->toBeFalse();
+});
+
+it('rejects tokens with a mismatched audience', function () {
+  $issuer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'issuer' => 'service-a',
+    'audience' => 'frontend',
+    'user' => $this->user,
+  ]);
+
+  $token = $issuer->issueTokenForUser($this->user);
+
+  $consumer = new JwtAuthStrategy([
+    'secret_key' => $this->secret,
+    'issuer' => 'service-a',
+    'audience' => 'backoffice',
+    'token' => $token,
+    'user' => $this->user,
+  ]);
+
+  expect($consumer->isAuthenticated())->toBeFalse();
+});
+
 it('throws for malformed credentials', function () {
   $strategy = new JwtAuthStrategy([
     'secret_key' => $this->secret,

@@ -35,9 +35,13 @@ class SessionOAuthStateStore implements OAuthStateStoreInterface
 
     unset($_SESSION[self::SESSION_KEY][$provider]);
 
-    return isset($stored['code_verifier']) && is_string($stored['code_verifier'])
+    if (!array_key_exists('code_verifier', $stored)) {
+      return null;
+    }
+
+    return is_string($stored['code_verifier'])
       ? $stored['code_verifier']
-      : null;
+      : '';
   }
 
   protected function ensureSessionStarted(): void

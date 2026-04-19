@@ -104,6 +104,7 @@ class SessionAuthStrategy implements AuthStrategyInterface
   public function establishAuthenticatedUser(object $user): void
   {
     $this->ensureSessionStarted();
+    $this->rotateSessionIdentifier();
     $_SESSION[self::SESSION_USER_FIELD] = $this->sanitizeUser($user);
   }
 
@@ -213,6 +214,20 @@ class SessionAuthStrategy implements AuthStrategyInterface
 
     if (false === session_start($sessionOptions)) {
       throw new AuthException('Failed to start the session.');
+    }
+  }
+
+  /**
+   * @throws AuthException
+   */
+  protected function rotateSessionIdentifier(): void
+  {
+    if ($this->shouldUsePseudoSession() || session_status() !== PHP_SESSION_ACTIVE) {
+      return;
+    }
+
+    if (false === session_regenerate_id(true)) {
+      throw new AuthException('Failed to rotate the session identifier.');
     }
   }
 

@@ -28,6 +28,14 @@ it('stores and consumes state once', function () {
     ->and($store->consume('github', 'state-123'))->toBeNull();
 });
 
+it('returns an empty verifier sentinel for a valid non-pkce state', function () {
+  $store = new SessionOAuthStateStore();
+  $store->store('github', 'state-123');
+
+  expect($store->consume('github', 'state-123'))->toBe('')
+    ->and($store->consume('github', 'state-123'))->toBeNull();
+});
+
 it('returns null for an invalid state', function () {
   $store = new SessionOAuthStateStore();
   $store->store('github', 'state-123', 'verifier-123');

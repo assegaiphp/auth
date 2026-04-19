@@ -1,5 +1,8 @@
 .idea
 .vscode
+.github
+.cache
+.copilot
 /.dev/
 /vendor/
 /tests/Unit/src_test/assegai.json

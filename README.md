@@ -45,6 +45,12 @@ It does not currently provide:
 
 You still own the application flow around it: loading users, choosing when to authenticate, defining routes, and deciding what to do after login succeeds.
 
+## Contribution workflow
+
+For commit and pull request conventions in this repo, see:
+
+- [docs/commit-and-pr-guidelines.md](./docs/commit-and-pr-guidelines.md)
+
 ## Installation
 
 ```bash
