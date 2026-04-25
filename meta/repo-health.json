@@ -1,7 +1,7 @@
 {
   "repository": "assegaiphp/auth",
   "package": "assegaiphp/auth",
-  "php": ">=8.3",
+  "php": ">=8.4",
   "license": "MIT",
   "ci": {
     "workflow": "php.yml",
