@@ -69,13 +69,15 @@ class OAuth2AuthStrategy
       throw new OAuthStateException('OAuth callback is missing the state value.');
     }
 
-    $codeVerifier = $this->stateStore->consume($this->provider->getName(), $state);
+    $storedVerifier = $this->stateStore->consume($this->provider->getName(), $state);
 
-    if ($this->usePkce && $codeVerifier === null) {
+    if ($storedVerifier === null) {
       throw new OAuthStateException('Invalid or expired OAuth state.');
     }
 
-    if (!$this->usePkce && $codeVerifier === null) {
+    $codeVerifier = $storedVerifier === '' ? null : $storedVerifier;
+
+    if ($this->usePkce && $codeVerifier === null) {
       throw new OAuthStateException('Invalid or expired OAuth state.');
     }
 

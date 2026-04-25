@@ -146,6 +146,66 @@ it('can handle a callback and establish session and jwt auth', function () {
     ->and($sessionStrategy->getUser())->toHaveProperty('email', 'oauth@example.com');
 });
 
+it('can handle a callback without pkce when the state is valid', function () {
+  $stateStore = new class implements OAuthStateStoreInterface {
+    public function store(string $provider, string $state, ?string $codeVerifier = null): void
+    {
+    }
+
+    public function consume(string $provider, string $state): ?string
+    {
+      return '';
+    }
+  };
+
+  $provider = new class implements OAuthProviderInterface {
+    public function getName(): string
+    {
+      return 'github';
+    }
+
+    public function buildAuthorizationUrl(OAuthProviderConfig $config, string $state, ?string $codeChallenge = null, string $codeChallengeMethod = 'S256'): string
+    {
+      return 'https://example.test/authorize';
+    }
+
+    public function exchangeCode(OAuthProviderConfig $config, string $code, ?string $codeVerifier = null): OAuthTokenResponse
+    {
+      expect($code)->toBe('callback-code')
+        ->and($codeVerifier)->toBeNull();
+
+      return new OAuthTokenResponse('access-token');
+    }
+
+    public function fetchUserProfile(OAuthProviderConfig $config, OAuthTokenResponse $tokens): OAuthUserProfile
+    {
+      return new OAuthUserProfile(
+        provider: 'github',
+        providerId: '123',
+        email: 'oauth@example.com',
+        name: 'OAuth User',
+        username: 'oauth-user',
+      );
+    }
+  };
+
+  $strategy = new OAuth2AuthStrategy(
+    provider: $provider,
+    config: new OAuthProviderConfig('id', 'secret', 'https://app/callback', 'https://auth', 'https://token', 'https://user'),
+    stateStore: $stateStore,
+    usePkce: false,
+  );
+
+  $result = $strategy->handleCallback([
+    'code' => 'callback-code',
+    'state' => 'state-123',
+  ]);
+
+  expect($result->sessionEstablished)->toBeFalse()
+    ->and($result->jwtToken)->toBeNull()
+    ->and($result->user)->toHaveProperty('email', 'oauth@example.com');
+});
+
 it('rejects invalid callback state', function () {
   $strategy = new OAuth2AuthStrategy(
     provider: new class implements OAuthProviderInterface {

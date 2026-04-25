@@ -46,6 +46,20 @@ it('can authenticate a user', function () {
   ]))->toBeTrue();
 });
 
+it('rotates the session identifier after credential authentication', function () {
+  $knownSessionId = session_create_id('auth-');
+  session_id($knownSessionId);
+
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
+
+  expect($strategy->authenticate([
+    'email' => $this->email,
+    'password' => $this->password,
+  ]))->toBeTrue()
+    ->and(session_status())->toBe(PHP_SESSION_ACTIVE)
+    ->and(session_id())->not->toBe($knownSessionId);
+});
+
 it('fails when the password is wrong', function () {
   $strategy = new SessionAuthStrategy(['user' => $this->user]);
 
@@ -99,6 +113,21 @@ it('can establish a trusted authenticated user directly', function () {
   expect($strategy->isAuthenticated())->toBeTrue()
     ->and($strategy->getUser())
     ->toHaveProperty('email', 'oauth@example.com');
+});
+
+it('rotates the session identifier when establishing a trusted user', function () {
+  $knownSessionId = session_create_id('auth-');
+  session_id($knownSessionId);
+
+  $strategy = new SessionAuthStrategy(['user' => $this->user]);
+  $strategy->establishAuthenticatedUser((object) [
+    'id' => 99,
+    'email' => 'oauth@example.com',
+    'name' => 'OAuth User',
+  ]);
+
+  expect(session_status())->toBe(PHP_SESSION_ACTIVE)
+    ->and(session_id())->not->toBe($knownSessionId);
 });
 
 it('can logout a user', function () {

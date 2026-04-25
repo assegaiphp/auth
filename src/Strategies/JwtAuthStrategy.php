@@ -145,6 +145,11 @@ class JwtAuthStrategy implements AuthStrategyInterface
 
     try {
       $decoded = JWT::decode($token, new Key($this->secretKey, $this->algorithm));
+
+      if (!$this->hasValidRegisteredClaims($decoded)) {
+        return false;
+      }
+
       $this->user = $decoded;
       $this->token = $token;
     } catch (Exception) {
@@ -249,6 +254,38 @@ class JwtAuthStrategy implements AuthStrategyInterface
     }
 
     return $timestamp;
+  }
+
+  protected function hasValidRegisteredClaims(stdClass $decoded): bool
+  {
+    if ($this->issuer !== '' && (($decoded->iss ?? null) !== $this->issuer)) {
+      return false;
+    }
+
+    if ($this->audience !== '' && !$this->audienceMatches($decoded->aud ?? null)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  protected function audienceMatches(mixed $audienceClaim): bool
+  {
+    if (is_string($audienceClaim)) {
+      return $audienceClaim === $this->audience;
+    }
+
+    if (!is_array($audienceClaim)) {
+      return false;
+    }
+
+    foreach ($audienceClaim as $candidate) {
+      if (is_string($candidate) && $candidate === $this->audience) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   protected function resolveBearerToken(): ?string
