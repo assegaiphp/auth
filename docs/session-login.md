@@ -183,7 +183,7 @@ Core resolves `LoginRedirectFilter` through DI and reads `authentication.loginRe
 
 The filter is terminal: once it handles `UnauthorizedException`, lower-precedence filters and the default exception handler do not emit another response. It runs before Core closes the request session, so the intended URL is persisted.
 
-Only safe local `GET` and `HEAD` targets are stored. Cross-origin, scheme-relative, and malformed targets are rejected. The configured login path is automatically excluded, preventing redirect loops.
+Only safe local `GET` and `HEAD` targets are stored. Cross-origin, scheme-relative, backslash-containing, and malformed targets are rejected. The configured login path is automatically excluded, preventing redirect loops.
 
 For a controller-specific policy, pass a configured `LoginRedirectFilter` instance to `UseFilters`. For behavior outside the built-in option surface, implement `ExceptionFilterInterface` and apply that custom filter instead.
 
@@ -250,6 +250,7 @@ final readonly class AuthController
       !is_string($target) ||
       !str_starts_with($target, '/') ||
       str_starts_with($target, '//') ||
+      str_contains($target, '\\') ||
       preg_match('/[\r\n]/', $target)
     ) {
       return '/dashboard';
