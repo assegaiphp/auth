@@ -8,8 +8,8 @@
     "label": "tests"
   },
   "status": {
-    "label": "active",
+    "label": "0.10.0 milestone",
     "color": "10b981",
-    "summary": "Session, JWT, and OAuth strategies for AssegaiPHP and standalone PHP apps."
+    "summary": "Complete session-login guidance for the AssegaiPHP 0.10 authentication failure flow."
   }
 }
