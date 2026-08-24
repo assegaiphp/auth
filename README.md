@@ -59,6 +59,8 @@ composer require assegaiphp/auth
 
 ## Session Authentication
 
+For a complete Core 0.10.x application flow with repository lookup, a guard, configurable failure redirects, intended-target restoration, and logout, see [Session Login End to End](./docs/session-login.md).
+
 Use `SessionAuthStrategy` when you want the authenticated user stored in `$_SESSION`.
 
 ```php
@@ -95,6 +97,12 @@ On successful authentication the strategy:
 - clones the configured user object
 - removes the password field from that clone
 - stores the sanitized user in `$_SESSION['user']`
+
+### Assegai framework integration
+
+When this strategy runs inside an Assegai core application, core owns the already-active session and its cookie configuration. Configure the session name, lifetime, cookie flags, SameSite policy, and login redirect behavior in `config/auth.php` instead of passing standalone session options to each strategy instance.
+
+For protected browser controllers, pair a session guard that raises `UnauthorizedException` with core's configurable `LoginRedirectFilter`. The filter requires the application login URL, can retain a safe intended URL in the session, and can be replaced with any application-defined exception filter when the default behavior is insufficient.
 
 ### Trusted session handoff
 
