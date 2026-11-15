@@ -21,7 +21,7 @@
   "require": {
     "php": ">=8.4",
     "firebase/php-jwt": "^7.0",
-    "assegaiphp/attributes": "^1.0"
+    "assegaiphp/attributes": "~1.0.3"
   },
   "config": {
     "allow-plugins": {

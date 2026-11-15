@@ -1,6 +1,6 @@
 # Session Login End to End
 
-This example builds a complete browser login flow with `SessionAuthStrategy` and Assegai Core 0.10.x. It covers application-owned user lookup, credential verification, protected routes, configurable login redirects, intended-target restoration, and logout.
+This example builds a complete browser login flow with `SessionAuthStrategy` and Assegai Core 0.11.x. It covers application-owned user lookup, credential verification, protected routes, configurable login redirects, intended-target restoration, and logout.
 
 ## What owns each responsibility
 
@@ -10,11 +10,13 @@ This example builds a complete browser login flow with `SessionAuthStrategy` and
 - Core's opt-in `LoginRedirectFilter` turns that exception into a browser redirect on controllers where the application applies it.
 - Without that filter, the same guard failure keeps the normal `401 Unauthorized` response. No auth interceptor is required.
 
-Install the packages on the 0.10 release line:
+Install the packages on the 0.11 release line:
 
 ```bash
-composer require assegaiphp/core:^0.10 assegaiphp/auth:^0.10
+composer require assegaiphp/core:^0.11 assegaiphp/auth:^0.11 --with-all-dependencies
 ```
+
+For an existing application, review all directly required AssegaiPHP framework modules and move their constraints to `0.11.x` together. The command above changes the Core and Auth root requirements; it does not rewrite constraints for other directly required modules. Auth retains its compatible Attributes `1.0.x` dependency stream, requiring at least `1.0.3`.
 
 ## Configure a Core-owned session
 
