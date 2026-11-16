@@ -16,7 +16,7 @@ Install the packages on the 0.11 release line:
 composer require assegaiphp/core:^0.11 assegaiphp/auth:^0.11 --with-all-dependencies
 ```
 
-For an existing application, review all directly required AssegaiPHP framework modules and move their constraints to `0.11.x` together. The command above changes the Core and Auth root requirements; it does not rewrite constraints for other directly required modules. Auth retains its compatible Attributes `1.0.x` dependency stream, requiring at least `1.0.3`.
+To adopt the coordinated `0.11.x` release in an existing application, review all directly required AssegaiPHP framework modules and their support ranges together. The command above explicitly selects Core and Auth `0.11`; it does not rewrite constraints for other directly required modules. Preserve any existing support ranges your application still needs. Auth retains its published Attributes `^1.0` dependency range; Attributes `1.0.3` is the coordinated recommendation.
 
 ## Configure a Core-owned session
 

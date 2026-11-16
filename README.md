@@ -59,11 +59,11 @@ composer require assegaiphp/auth:^0.11
 
 ## Compatibility
 
-Auth `0.11.x` belongs to the AssegaiPHP `0.11.x` framework release line. Applications using Core should keep their installed framework modules on that same major and minor line; patch versions may differ.
+Auth `0.11.x` belongs to the AssegaiPHP `0.11.x` framework release line. The coordinated release recommends framework modules on that same major and minor line; patch versions may differ.
 
-Auth requires PHP 8.4 or newer and `assegaiphp/attributes:~1.0.3`. Attributes retains its established `1.0.x` dependency stream. The constraint accepts compatible `1.0` patches from `1.0.3` and excludes later minor lines.
+Auth requires PHP 8.4 or newer and retains its published `assegaiphp/attributes:^1.0` dependency range. Attributes `1.0.3` is the coordinated release recommendation, expressed as `~1.0.3` in the release inventory. That recommendation does not raise Auth's compatibility floor or remove the existing range's acceptance of compatible Attributes `1.x` releases.
 
-Auth can also be used independently of Core. It does not require Core or Common, so upgrading Auth does not update those root requirements. Review and update the other framework requirements explicitly when migrating an application to `0.11.x`.
+Auth can also be used independently of Core. It does not require Core or Common, so upgrading Auth does not update those root requirements. Review the other framework requirements explicitly when adopting the coordinated `0.11.x` release, preserving any existing support ranges your application still needs.
 
 ## Session Authentication
 
