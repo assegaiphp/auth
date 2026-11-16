@@ -54,12 +54,20 @@ For commit and pull request conventions in this repo, see:
 ## Installation
 
 ```bash
-composer require assegaiphp/auth
+composer require assegaiphp/auth:^0.11
 ```
+
+## Compatibility
+
+Auth `0.11.x` belongs to the AssegaiPHP `0.11.x` framework release line. The coordinated release recommends framework modules on that same major and minor line; patch versions may differ.
+
+Auth requires PHP 8.4 or newer and retains its published `assegaiphp/attributes:^1.0` dependency range. Attributes `1.0.3` is the coordinated release recommendation, expressed as `~1.0.3` in the release inventory. That recommendation does not raise Auth's compatibility floor or remove the existing range's acceptance of compatible Attributes `1.x` releases.
+
+Auth can also be used independently of Core. It does not require Core or Common, so upgrading Auth does not update those root requirements. Review the other framework requirements explicitly when adopting the coordinated `0.11.x` release, preserving any existing support ranges your application still needs.
 
 ## Session Authentication
 
-For a complete Core 0.10.x application flow with repository lookup, a guard, configurable failure redirects, intended-target restoration, and logout, see [Session Login End to End](./docs/session-login.md).
+For a complete Core 0.11.x application flow with repository lookup, a guard, configurable failure redirects, intended-target restoration, and logout, see [Session Login End to End](./docs/session-login.md).
 
 Use `SessionAuthStrategy` when you want the authenticated user stored in `$_SESSION`.
 
